@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Date or No Date - Retro Style</title>
+  <style>
+    /* Colors & Fonts from second image */
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+
+    :root {
+      --bg-gradient-start: #f7e48b;
+      --bg-gradient-end: #dea800;
+      --box-bg: #f9edd3;
+      --box-border: #5e3d00;
+      --box-shadow: rgba(94, 61, 0, 0.4);
+      --text-color: #5e3d00;
+      --accent-color: #c87f00;
+      --accent-shadow: rgba(200, 127, 0, 0.7);
+    }
+
+    /* Reset & base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+      font-family: 'Fredoka One', cursive, Arial, sans-serif;
+      color: var(--text-color);
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 3rem;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      margin-bottom: 0.25rem;
+      text-shadow: 2px 2px var(--accent-shadow);
+    }
+
+    #game-info {
+      font-size: 1.75rem;
+      margin-bottom: 2rem;
+      font-weight: 700;
+      text-shadow: 1px 1px var(--accent-shadow);
+    }
+
+    /* Grid container for boxes */
+    #cards-container {
+      display: grid;
+      grid-template-columns: repeat(7, 70px);
+      gap: 15px 14px;
+      max-width: 520px;
+      margin-bottom: 2.5rem;
+      justify-content: center;
+    }
+
+    /* Each box */
+    .card {
+      background: var(--box-bg);
+      border: 6px solid var(--box-border);
+      box-shadow: 6px 6px 0 var(--box-shadow);
+      width: 70px;
+      height: 70px;
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 70px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+      position: relative;
+      border-radius: 10px;
+      color: var(--box-border);
+    }
+    .card:focus {
+      outline: 3px solid var(--accent-color);
+      outline-offset: 2px;
+    }
+    .card:hover:not(.disabled):not(.opened) {
+      background-color: #fff4bc;
+      box-shadow: 8px 8px 0 var(--accent-shadow);
+      transform: translateY(-3px);
+      color: var(--accent-color);
+    }
+
+    .card.disabled {
+      cursor: default;
+      opacity: 0.5;
+      box-shadow: none;
+      background-color: #e9e0b3;
+      color: #988700;
+    }
+
+    /* Chosen box styling */
+    .card.selected {
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+      box-shadow: 8px 8px 0 var(--accent-shadow);
+      cursor: default;
+    }
+
+    /* Opened box style */
+    .card.opened {
+      background: #fff9d6;
+      border-color: var(--accent-color);
+      box-shadow: 8px 8px 0 var(--accent-shadow);
+      cursor: default;
+      color: var(--text-color);
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: normal;
+      padding: 8px 6px;
+      text-align: left;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-radius: 10px;
+      height: 90px;
+      word-break: break-word;
+    }
+    .card.opened .date-title {
+      font-weight: 900;
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .card.opened .chore-text {
+      font-style: italic;
+      font-size: 0.85rem;
+      text-align: center;
+      margin-top: 3px;
+    }
+
+    /* Popup overlay */
+    #popup {
+      position: fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 1rem;
+    }
+    #popup .popup-content {
+      background: var(--box-bg);
+      border-radius: 15px;
+      padding: 30px 40px;
+      max-width: 400px;
+      box-shadow: 10px 10px 0 var(--box-shadow);
+      text-align: center;
+      color: var(--text-color);
+      font-family: 'Fredoka One', cursive, Arial, sans-serif;
+    }
+    #popup h2 {
+      margin-top: 0;
+      font-size: 2rem;
+      color: var(--accent-color);
+      text-shadow: 1px 1px var(--accent-shadow);
+      margin-bottom: 1rem;
+    }
+    #popup p {
+      font-size: 1.15rem;
+      margin-bottom: 2rem;
+      font-weight: 600;
+    }
+    #popup button {
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 24px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      cursor: pointer;
+      box-shadow: 0 6px 10px var(--accent-shadow);
+      transition: background 0.3s ease;
+      margin: 0 12px;
+      user-select: none;
+    }
+    #popup button:hover {
+      background: #a36100;
+    }
+
+    /* Toggle button */
+    #toggle-list-btn {
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 15px 40px;
+      font-weight: 800;
+      font-size: 1.3rem;
+      cursor: pointer;
+      box-shadow: 0 6px 10px var(--accent-shadow);
+      transition: background 0.3s ease;
+      margin-bottom: 1.8rem;
+      user-select: none;
+    }
+    #toggle-list-btn:hover {
+      background: #a36100;
+    }
+
+    /* List container */
+    #list-container {
+      max-width: 600px;
+      background: var(--box-bg);
+      border-radius: 18px;
+      box-shadow: 8px 8px 0 var(--box-shadow);
+      padding: 20px 30px;
+      color: var(--text-color);
+      font-size: 1.05rem;
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+      margin: 0 auto;
+      user-select: text;
+    }
+    #list-container table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #list-container th, #list-container td {
+      border: 2px solid var(--box-border);
+      padding: 10px 14px;
+      text-align: left;
+      vertical-align: top;
+      font-weight: 600;
+    }
+    #list-container th {
+      background: var(--accent-color);
+      color: #fff4cc;
+      text-shadow: 1px 1px var(--accent-shadow);
+      font-weight: 900;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      #cards-container {
+        grid-template-columns: repeat(5, 60px);
+        gap: 12px 10px;
+        max-width: 320px;
+        margin-bottom: 1.5rem;
+      }
+      .card {
+        width: 60px;
+        height: 60px;
+        font-size: 1.6rem;
+      }
+      .card.opened {
+        height: 80px;
+        font-size: 0.8rem;
+      }
+      h1 {
+        font-size: 2.5rem;
+      }
+      #game-info {
+        font-size: 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+      #toggle-list-btn {
+        font-size: 1.1rem;
+        padding: 12px 28px;
+      }
+      #list-container {
+        max-width: 100%;
+        font-size: 0.9rem;
+        padding: 15px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>DATE OR<br>NO DATE</h1>
+  <div id="game-info">Pick one box to keep your date.</div>
+  <div id="cards-container" aria-label="Date or No Date game boxes"></div>
+
+  <button id="toggle-list-btn" aria-expanded="false" aria-controls="list-container">Show Date &amp; Chore List</button>
+  <div id="list-container" aria-live="polite" aria-hidden="true" role="region" aria-label="Full list of dates and chores">
+    <table>
+      <thead>
+        <tr><th>Date Idea</th><th>Chore</th></tr>
+      </thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+
+  <div id="popup" role="dialog" aria-modal="true" aria-labelledby="popup-title" aria-describedby="popup-desc">
+    <div class="popup-content">
+      <h2 id="popup-title"></h2>
+      <p id="popup-desc"></p>
+      <div id="popup-buttons"></div>
+      <button onclick="closePopup()" aria-label="Close popup">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Editable pairs
+    let pairs = [
+      { date: "McDonald’s Feast Date", chore: "You have to sweep the kitchen first." },
+      { date: "Wendy’s Crispy Chicken Night", chore: "You have to wear an apron for the rest of the day." },
+      { date: "Taco Bell Fiesta Run", chore: "You must clean out the car first." },
+      { date: "Taco John’s Snack Attack", chore: "You have to vacuum the living room right now." },
+      { date: "Burger King Crown Night", chore: "You have to give the other person a 10-minute massage first." },
+      { date: "Jimmy John’s Sub Picnic", chore: "You have to fetch snacks/drinks for the other person for the rest of the day." },
+      { date: "Culver’s ButterBurger & Frozen Custard Date", chore: "You must make the bed perfectly first." },
+      { date: "Magnolia Café Breakfast Date (Exira)", chore: "You must be the other person’s butler for 5 minutes." },
+      { date: "Farmers Market Snack Stop (Atlantic or Guthrie Center)", chore: "You must make a silly TikTok together before you leave." },
+      { date: "Honey Creek Smokehouse BBQ Night (Council Bluffs)", chore: "You must fold all the laundry in the basket first." },
+      { date: "La Casa Pizza & Movie Night (Atlantic)", chore: "You have to sing a song dramatically in the living room." },
+      { date: "Roadside Picnic at Lake Manawa", chore: "You have to do the dishes tonight." },
+      { date: "Ice Cream Date at Frosty Treat (Carroll)", chore: "You have to sweep the kitchen first." },
+      { date: "Home Blanket Fort Movie Night", chore: "You must clean out the car first." },
+      { date: "Game Night at Home", chore: "You must give the other person a 10-minute massage first." },
+      { date: "Bowling & Burgers Night at The Alley (Atlantic)", chore: "You must vacuum the living room first." },
+      { date: "Fast Food Three-Stop Challenge (Choose any 3 chains nearby)", chore: "You must make the bed perfectly first." },
+      { date: "Mystery Drive Date", chore: "You must wear an apron for the rest of the day." },
+      { date: "Road Trip Fast-Food Crawl", chore: "You must be the other person’s butler for 5 minutes." },
+      { date: "Taco Bell Midnight Run", chore: "You must fetch snacks/drinks for the other person for the rest of the day." },
+      { date: "Mini Road Trip Adventure (within 80 miles)", chore: "You have to fold all the laundry first." },
+      { date: "Sonic Drive-In Treat Stop", chore: "You must make a silly TikTok together before you start." },
+      { date: "Dessert-Only Date at a Local Bakery (The Sweet Escape in Atlantic)", chore: "You must do the dishes tonight." },
+      { date: "Casino & Buffet Night at Rhythm City Casino (Davenport)", chore: "You must sing a song dramatically before you can go." },
+    ];
+
+    // Shuffle array function (Fisher-Yates)
+    function shuffle(array) {
+      let currentIndex = array.length, randomIndex;
+      while (currentIndex !== 0) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+      }
+      return array;
+    }
+
+    // Shuffle pairs at start
+    pairs = shuffle(pairs);
+
+    // Elements
+    const container = document.getElementById('cards-container');
+    const info = document.getElementById('game-info');
+    const popup = document.getElementById('popup');
+    const popupTitle = document.getElementById('popup-title');
+    const popupDesc = document.getElementById('popup-desc');
+    const popupButtons = document.getElementById('popup-buttons');
+    const listBtn = document.getElementById('toggle-list-btn');
+    const listContainer = document.getElementById('list-container');
+    const listBody = document.getElementById('list-body');
+
+    let chosenBoxIndex = null;
+    let openedBoxesCount = 0;
+    const totalBoxes = pairs.length;
+    const boxesToOpen = totalBoxes - 2; // how many boxes to open before swap prompt
+
+    // Build the boxes with numbers
+    pairs.forEach((opt, i) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.textContent = i + 1;
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', `Box ${i + 1}`);
+      card.dataset.index = i;
+
+      card.addEventListener('click', () => onCardClick(i));
+      card.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onCardClick(i);
+        }
+      });
+
+      container.appendChild(card);
+    });
+
+    function onCardClick(index) {
+      const cards = container.children;
+      const card = cards[index];
+      if (chosenBoxIndex === null) {
+        // First pick
+        chosenBoxIndex = index;
+        card.classList.add('selected');
+        info.textContent = `You chose box #${index + 1}. Now open other boxes one by one.`;
+        return;
+      }
+      if (index === chosenBoxIndex) {
+        alert('This is your chosen box! You cannot open it now.');
+        return;
+      }
+      if (card.classList.contains('disabled') || card.classList.contains('opened')) {
+        return; // already opened or disabled
+      }
+      // Open box
+      openBox(card, index);
+      openedBoxesCount++;
+
+      if (openedBoxesCount === boxesToOpen) {
+        info.textContent = `Only two boxes left: your box #${chosenBoxIndex + 1} and one other. Do you want to swap?`;
+        showSwapOptions();
+      } else {
+        info.textContent = `Opened ${openedBoxesCount} box(es). Keep opening or wait for swap.`;
+      }
+    }
+
+    function openBox(card, index) {
+      card.classList.add('opened', 'disabled');
+      card.innerHTML = `
+        <div class="date-title">${pairs[index].date}</div>
+        <div class="chore-text">${pairs[index].chore}</div>
+      `;
+      card.setAttribute('aria-label', `Box ${index + 1} opened. Date: ${pairs[index].date}. Chore: ${pairs[index].chore}`);
+    }
+
+    function showSwapOptions() {
+      const cards = container.children;
+      let otherBoxIndex = null;
+      for(let i=0; i<cards.length; i++) {
+        if (i !== chosenBoxIndex && !cards[i].classList.contains('opened') && !cards[i].classList.contains('disabled')) {
+          otherBoxIndex = i;
+          break;
+        }
+      }
+      if (otherBoxIndex === null) {
+        alert('Error: Could not find the other unopened box.');
+        return;
+      }
+
+      popupTitle.textContent = 'Swap or Keep?';
+      popupDesc.innerHTML = `
+        Your chosen box is #${chosenBoxIndex + 1}.<br>
+        The other unopened box is #${otherBoxIndex + 1}.<br><
