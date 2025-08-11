@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Date or No Date - Retro Style</title>
   <style>
-    /* Colors & Fonts from second image */
+    /* Colors & Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
 
     :root {
@@ -69,13 +69,16 @@
       height: 70px;
       font-size: 2rem;
       font-weight: 700;
-      line-height: 70px;
+      line-height: 60px; /* Adjusted for better vertical centering */
       cursor: pointer;
       user-select: none;
       transition: background-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
       position: relative;
       border-radius: 10px;
       color: var(--box-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .card:focus {
       outline: 3px solid var(--accent-color);
@@ -102,6 +105,7 @@
       color: var(--accent-color);
       box-shadow: 8px 8px 0 var(--accent-shadow);
       cursor: default;
+      transform: scale(1.1); /* Make it stand out */
     }
 
     /* Opened box style */
@@ -115,12 +119,8 @@
       font-weight: 600;
       line-height: normal;
       padding: 8px 6px;
-      text-align: left;
+      text-align: center; /* Centered text */
       overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      border-radius: 10px;
       height: 90px;
       word-break: break-word;
     }
@@ -128,12 +128,10 @@
       font-weight: 900;
       font-size: 1.05rem;
       margin-bottom: 4px;
-      text-align: center;
     }
     .card.opened .chore-text {
       font-style: italic;
       font-size: 0.85rem;
-      text-align: center;
       margin-top: 3px;
     }
 
@@ -169,8 +167,9 @@
       font-size: 1.15rem;
       margin-bottom: 2rem;
       font-weight: 600;
+      line-height: 1.5; /* Increased line height for readability */
     }
-    #popup button {
+    #popup #popup-buttons button {
       background: var(--accent-color);
       color: white;
       border: none;
@@ -184,7 +183,7 @@
       margin: 0 12px;
       user-select: none;
     }
-    #popup button:hover {
+    #popup #popup-buttons button:hover {
       background: #a36100;
     }
 
@@ -209,6 +208,7 @@
 
     /* List container */
     #list-container {
+      width: 90%;
       max-width: 600px;
       background: var(--box-bg);
       border-radius: 18px;
@@ -241,17 +241,18 @@
     }
 
     /* Responsive */
-    @media (max-width: 480px) {
+    @media (max-width: 600px) {
       #cards-container {
         grid-template-columns: repeat(5, 60px);
         gap: 12px 10px;
-        max-width: 320px;
+        max-width: 100%;
         margin-bottom: 1.5rem;
       }
       .card {
         width: 60px;
         height: 60px;
         font-size: 1.6rem;
+        line-height: 50px;
       }
       .card.opened {
         height: 80px;
@@ -269,7 +270,6 @@
         padding: 12px 28px;
       }
       #list-container {
-        max-width: 100%;
         font-size: 0.9rem;
         padding: 15px 20px;
       }
@@ -291,18 +291,17 @@
     </table>
   </div>
 
-  <div id="popup" role="dialog" aria-modal="true" aria-labelledby="popup-title" aria-describedby="popup-desc">
+  <div id="popup" role="dialog" aria-modal="true" aria-labelledby="popup-title" aria-describedby="popup-desc" style="display: none;">
     <div class="popup-content">
       <h2 id="popup-title"></h2>
       <p id="popup-desc"></p>
       <div id="popup-buttons"></div>
-      <button onclick="closePopup()" aria-label="Close popup">Close</button>
     </div>
   </div>
 
   <script>
-    // Editable pairs
-    let pairs = [
+    // --- Editable List of Date/Chore Pairs ---
+    const pairs = [
       { date: "McDonald’s Feast Date", chore: "You have to sweep the kitchen first." },
       { date: "Wendy’s Crispy Chicken Night", chore: "You have to wear an apron for the rest of the day." },
       { date: "Taco Bell Fiesta Run", chore: "You must clean out the car first." },
@@ -329,6 +328,26 @@
       { date: "Casino & Buffet Night at Rhythm City Casino (Davenport)", chore: "You must sing a song dramatically before you can go." },
     ];
 
+    // --- DOM Elements ---
+    const container = document.getElementById('cards-container');
+    const info = document.getElementById('game-info');
+    const popup = document.getElementById('popup');
+    const popupTitle = document.getElementById('popup-title');
+    const popupDesc = document.getElementById('popup-desc');
+    const popupButtons = document.getElementById('popup-buttons');
+    const listBtn = document.getElementById('toggle-list-btn');
+    const listContainer = document.getElementById('list-container');
+    const listBody = document.getElementById('list-body');
+
+    // --- Game State Variables ---
+    let chosenBoxIndex = null;
+    let openedBoxesCount = 0;
+    let pairsThisRound = [];
+    let gameInProgress = true;
+    const totalBoxes = pairs.length;
+    const boxesToOpen = totalBoxes - 2; // How many boxes to open before swap prompt
+
+    // --- Utility Functions ---
     // Shuffle array function (Fisher-Yates)
     function shuffle(array) {
       let currentIndex = array.length, randomIndex;
@@ -340,99 +359,162 @@
       return array;
     }
 
-    // Shuffle pairs at start
-    pairs = shuffle(pairs);
+    // --- Main Game Functions ---
+    // Function to start or restart the game
+    function setupGame() {
+      gameInProgress = true;
+      chosenBoxIndex = null;
+      openedBoxesCount = 0;
+      container.innerHTML = '';
+      listBody.innerHTML = '';
+      info.textContent = 'Pick one box to keep your date.';
+      popup.style.display = 'none';
+      
+      pairsThisRound = shuffle([...pairs]);
 
-    // Elements
-    const container = document.getElementById('cards-container');
-    const info = document.getElementById('game-info');
-    const popup = document.getElementById('popup');
-    const popupTitle = document.getElementById('popup-title');
-    const popupDesc = document.getElementById('popup-desc');
-    const popupButtons = document.getElementById('popup-buttons');
-    const listBtn = document.getElementById('toggle-list-btn');
-    const listContainer = document.getElementById('list-container');
-    const listBody = document.getElementById('list-body');
+      // Build the boxes and the list
+      pairsThisRound.forEach((opt, i) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.textContent = i + 1;
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', `Box ${i + 1}`);
+        card.dataset.index = i;
 
-    let chosenBoxIndex = null;
-    let openedBoxesCount = 0;
-    const totalBoxes = pairs.length;
-    const boxesToOpen = totalBoxes - 2; // how many boxes to open before swap prompt
+        card.addEventListener('click', () => onCardClick(i));
+        card.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onCardClick(i);
+          }
+        });
+        container.appendChild(card);
 
-    // Build the boxes with numbers
-    pairs.forEach((opt, i) => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.textContent = i + 1;
-      card.setAttribute('tabindex', '0');
-      card.setAttribute('role', 'button');
-      card.setAttribute('aria-label', `Box ${i + 1}`);
-      card.dataset.index = i;
-
-      card.addEventListener('click', () => onCardClick(i));
-      card.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onCardClick(i);
-        }
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${opt.date}</td><td>${opt.chore}</td>`;
+        listBody.appendChild(row);
       });
+    }
 
-      container.appendChild(card);
-    });
-
+    // Handles clicking on a card
     function onCardClick(index) {
-      const cards = container.children;
-      const card = cards[index];
-      if (chosenBoxIndex === null) {
-        // First pick
-        chosenBoxIndex = index;
-        card.classList.add('selected');
-        info.textContent = `You chose box #${index + 1}. Now open other boxes one by one.`;
+      if (!gameInProgress) return;
+
+      const card = container.children[index];
+      if (card.classList.contains('disabled') || card.classList.contains('opened')) {
         return;
       }
+
+      if (chosenBoxIndex === null) {
+        chosenBoxIndex = index;
+        card.classList.add('selected');
+        info.textContent = `You chose box #${index + 1}. Now open ${boxesToOpen} other boxes.`;
+        return;
+      }
+      
       if (index === chosenBoxIndex) {
         alert('This is your chosen box! You cannot open it now.');
         return;
       }
-      if (card.classList.contains('disabled') || card.classList.contains('opened')) {
-        return; // already opened or disabled
-      }
-      // Open box
+      
       openBox(card, index);
       openedBoxesCount++;
 
       if (openedBoxesCount === boxesToOpen) {
-        info.textContent = `Only two boxes left: your box #${chosenBoxIndex + 1} and one other. Do you want to swap?`;
+        info.textContent = 'All other boxes opened. Time to make a choice!';
         showSwapOptions();
       } else {
-        info.textContent = `Opened ${openedBoxesCount} box(es). Keep opening or wait for swap.`;
+        const remainingToOpen = boxesToOpen - openedBoxesCount;
+        info.textContent = `You have ${remainingToOpen} more box(es) to open.`;
       }
     }
 
+    // Reveals the content of a box
     function openBox(card, index) {
       card.classList.add('opened', 'disabled');
       card.innerHTML = `
-        <div class="date-title">${pairs[index].date}</div>
-        <div class="chore-text">${pairs[index].chore}</div>
+        <div class="date-title">${pairsThisRound[index].date}</div>
+        <div class="chore-text">${pairsThisRound[index].chore}</div>
       `;
-      card.setAttribute('aria-label', `Box ${index + 1} opened. Date: ${pairs[index].date}. Chore: ${pairs[index].chore}`);
+      card.setAttribute('aria-label', `Box ${index + 1} opened. It contained: ${pairsThisRound[index].date}.`);
+      card.setAttribute('tabindex', '-1');
     }
 
+    // --- Popup and Final Choice Functions ---
+    // Shows the "Swap or Keep" popup
     function showSwapOptions() {
+      gameInProgress = false; // Pause game while popup is open
       const cards = container.children;
-      let otherBoxIndex = null;
-      for(let i=0; i<cards.length; i++) {
-        if (i !== chosenBoxIndex && !cards[i].classList.contains('opened') && !cards[i].classList.contains('disabled')) {
+      let otherBoxIndex = -1;
+      for (let i = 0; i < cards.length; i++) {
+        if (i !== chosenBoxIndex && !cards[i].classList.contains('opened')) {
           otherBoxIndex = i;
           break;
         }
       }
-      if (otherBoxIndex === null) {
-        alert('Error: Could not find the other unopened box.');
-        return;
-      }
 
+      popup.style.display = 'flex';
       popupTitle.textContent = 'Swap or Keep?';
       popupDesc.innerHTML = `
         Your chosen box is #${chosenBoxIndex + 1}.<br>
-        The other unopened box is #${otherBoxIndex + 1}.<br><
+        The other unopened box is #${otherBoxIndex + 1}.<br>
+        Do you want to <strong>SWAP</strong> your box for the other one?
+      `;
+      
+      popupButtons.innerHTML = `
+        <button onclick="handleFinalChoice(true, ${otherBoxIndex})">Yes, Swap!</button>
+        <button onclick="handleFinalChoice(false, ${chosenBoxIndex})">No, Keep It!</button>
+      `;
+    }
+
+    // Handles the final decision
+    function handleFinalChoice(didSwap, finalIndex) {
+      const finalPair = pairsThisRound[finalIndex];
+      
+      popupTitle.textContent = 'Your Date Is...';
+      popupDesc.innerHTML = `
+        <div class="date-title" style="font-size: 1.5rem; margin-bottom: 1rem;">${finalPair.date}</div>
+        <div class="chore-text" style="font-size: 1.1rem;">BUT... ${finalPair.chore}</div>
+      `;
+      
+      popupButtons.innerHTML = `<button onclick="closePopup()">Play Again</button>`;
+      
+      // Reveal the other box as well
+      const cards = container.children;
+      for (let i = 0; i < cards.length; i++) {
+          if (!cards[i].classList.contains('opened') && !cards[i].classList.contains('selected')) {
+              openBox(cards[i], i);
+          }
+      }
+    }
+
+    // Closes the popup and restarts the game
+    function closePopup() {
+      popup.style.display = 'none';
+      setupGame();
+    }
+
+    // --- UI Toggles ---
+    // Toggle for the "Show/Hide List" button
+    listBtn.addEventListener('click', () => {
+      const isHidden = listContainer.getAttribute('aria-hidden') === 'true';
+      if (isHidden) {
+        listContainer.style.display = 'block';
+        listContainer.setAttribute('aria-hidden', 'false');
+        listBtn.textContent = 'Hide Date & Chore List';
+        listBtn.setAttribute('aria-expanded', 'true');
+      } else {
+        listContainer.style.display = 'none';
+        listContainer.setAttribute('aria-hidden', 'true');
+        listBtn.textContent = 'Show Date & Chore List';
+        listBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // --- Initial Game Start ---
+    document.addEventListener('DOMContentLoaded', setupGame);
+
+  </script>
+</body>
+</html>
