@@ -54,11 +54,9 @@
     #cards-container {
       display: grid;
       grid-template-columns: repeat(7, 70px);
-      /* Increased vertical gap to make space for the tooltips */
-      gap: 50px 14px; 
+      gap: 50px 14px; /* Increased vertical gap for tooltips */
       max-width: 520px;
-      /* Add margin to prevent top-row tooltips from being cut off */
-      margin-top: 3rem; 
+      margin-top: 3rem; /* Added margin to give top-row tooltips space */
       margin-bottom: 2.5rem;
       justify-content: center;
     }
@@ -75,7 +73,7 @@
       cursor: pointer;
       user-select: none;
       transition: all 0.25s ease;
-      position: relative; /* CRUCIAL for positioning the tooltip */
+      position: relative; /* Crucial for positioning the tooltip */
       border-radius: 10px;
       color: var(--box-border);
       display: flex;
@@ -97,7 +95,7 @@
     .card.disabled {
       cursor: default;
     }
-    .card.opened {
+    .card.opened-placeholder {
       background-color: #e9e0b3; /* Grayed out */
       color: #988700;
       opacity: 0.7;
@@ -111,31 +109,28 @@
       transform: scale(1.1);
     }
 
-    /* --- READABLE TOOLTIP --- */
+    /* READABLE TOOLTIP */
     .readable-tooltip {
-      visibility: hidden; /* Hide by default */
+      visibility: hidden;
       opacity: 0;
       position: absolute;
-      bottom: 120%; /* Position it above the card */
+      bottom: 120%;
       left: 50%;
       transform: translateX(-50%);
-      
-      width: 200px; /* Give it a readable width */
+      width: 200px;
       background: var(--box-bg);
       border: 4px solid var(--accent-color);
       border-radius: 12px;
       padding: 15px;
       box-shadow: 8px 8px 0 var(--accent-shadow);
       z-index: 100;
-
       text-align: center;
       font-size: 1rem;
       line-height: 1.4;
       color: var(--text-color);
       transition: opacity 0.3s ease, visibility 0.3s ease;
+      pointer-events: none; /* Tooltip itself is not clickable */
     }
-    
-    /* Small arrow pointing down from the tooltip */
     .readable-tooltip::after {
       content: '';
       position: absolute;
@@ -146,13 +141,10 @@
       border-style: solid;
       border-color: var(--accent-color) transparent transparent transparent;
     }
-    
-    /* This rule makes the tooltip visible when its parent card is opened */
-    .card.opened .readable-tooltip {
+    .card.tooltip-visible .readable-tooltip {
       visibility: visible;
       opacity: 1;
     }
-
     .readable-tooltip .date-title {
       font-weight: 900;
       font-size: 1.1rem;
@@ -213,7 +205,7 @@
       background: #a36100;
     }
 
-    /* Toggle button */
+    /* Toggle button & List */
     #toggle-list-btn {
       background: var(--accent-color);
       color: white;
@@ -230,8 +222,6 @@
     #toggle-list-btn:hover {
       background: #a36100;
     }
-
-    /* List container */
     #list-container {
       width: 90%;
       max-width: 600px;
@@ -247,40 +237,15 @@
       margin: 0 auto;
       user-select: text;
     }
-    #list-container table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    #list-container th, #list-container td {
-      border: 2px solid var(--box-border);
-      padding: 10px 14px;
-      text-align: left;
-      vertical-align: top;
-      font-weight: 600;
-    }
-    #list-container th {
-      background: var(--accent-color);
-      color: #fff4cc;
-      text-shadow: 1px 1px var(--accent-shadow);
-      font-weight: 900;
-    }
+    #list-container table { width: 100%; border-collapse: collapse; }
+    #list-container th, #list-container td { border: 2px solid var(--box-border); padding: 10px 14px; text-align: left; vertical-align: top; font-weight: 600; }
+    #list-container th { background: var(--accent-color); color: #fff4cc; text-shadow: 1px 1px var(--accent-shadow); font-weight: 900; }
 
     /* Responsive */
     @media (max-width: 600px) {
-      #cards-container {
-        grid-template-columns: repeat(5, 60px);
-        gap: 40px 10px;
-        margin-top: 2rem;
-      }
-      .card {
-        width: 60px;
-        height: 60px;
-        font-size: 1.6rem;
-      }
-      .readable-tooltip {
-        width: 180px;
-        font-size: 0.9rem;
-      }
+      #cards-container { grid-template-columns: repeat(5, 60px); gap: 40px 10px; margin-top: 2rem; }
+      .card { width: 60px; height: 60px; font-size: 1.6rem; }
+      .readable-tooltip { width: 180px; font-size: 0.9rem; }
       h1 { font-size: 2.5rem; }
       #game-info { font-size: 1.25rem; }
       #toggle-list-btn { font-size: 1.1rem; padding: 12px 28px; }
@@ -366,7 +331,6 @@
       return array;
     }
 
-    // --- MAIN GAME FUNCTIONS ---
     function setupGame() {
       gameInProgress = true;
       chosenBoxIndex = null;
@@ -386,14 +350,11 @@
         card.setAttribute('aria-label', `Box ${i + 1}`);
         card.dataset.index = i;
         
-        // ** THE FIX IS HERE **
-        // 1. Create a SPAN for the number so we can target it later
         const numberSpan = document.createElement('span');
         numberSpan.className = 'card-number';
         numberSpan.textContent = i + 1;
         card.appendChild(numberSpan);
         
-        // 2. Create the hidden tooltip and add it to the card
         const tooltip = document.createElement('div');
         tooltip.className = 'readable-tooltip';
         tooltip.innerHTML = `
@@ -411,27 +372,35 @@
         });
         container.appendChild(card);
 
-        // Populate the full list for the "Show List" button
         const row = document.createElement('tr');
         row.innerHTML = `<td>${opt.date}</td><td>${opt.chore}</td>`;
         listBody.appendChild(row);
       });
     }
 
+    // --- CLICK-TO-CLOSE LOGIC IS HERE ---
     function onCardClick(index) {
       if (!gameInProgress) return;
       const card = container.children[index];
-      if (card.classList.contains('disabled')) return;
 
+      // If the card is a placeholder for an opened box, toggle its tooltip
+      if (card.classList.contains('opened-placeholder')) {
+        card.classList.toggle('tooltip-visible');
+        return;
+      }
+      
+      // Ignore clicks on the chosen box or already disabled boxes
+      if (card.classList.contains('disabled') || index === chosenBoxIndex) return;
+
+      // Logic for the FIRST box selection
       if (chosenBoxIndex === null) {
         chosenBoxIndex = index;
-        card.classList.add('selected');
+        card.classList.add('selected', 'disabled');
         info.textContent = `You chose box #${index + 1}. Now open ${boxesToOpen} other boxes.`;
         return;
       }
       
-      if (index === chosenBoxIndex) return;
-      
+      // Logic for opening subsequent boxes
       openBox(card, index);
       openedBoxesCount++;
 
@@ -444,12 +413,19 @@
       }
     }
 
-    function openBox(card, index) {
-      card.classList.add('opened', 'disabled');
-      // Find and remove ONLY the number span, leaving the tooltip
+    function openBox(card, index, keepTooltipOpen = true) {
+      // Remove the number
       const numberSpan = card.querySelector('.card-number');
       if (numberSpan) {
         numberSpan.remove();
+      }
+      
+      // Add classes to make it a grayed-out placeholder
+      card.classList.add('opened-placeholder', 'disabled');
+      
+      if (keepTooltipOpen) {
+        // Show the tooltip immediately
+        card.classList.add('tooltip-visible');
       }
     }
 
@@ -457,7 +433,8 @@
       gameInProgress = false;
       let otherBoxIndex = -1;
       for (let i = 0; i < container.children.length; i++) {
-        if (i !== chosenBoxIndex && !container.children[i].classList.contains('opened')) {
+        // Find the last box that isn't a placeholder and isn't the chosen one
+        if (!container.children[i].classList.contains('opened-placeholder') && i !== chosenBoxIndex) {
           otherBoxIndex = i;
           break;
         }
@@ -488,10 +465,12 @@
       
       popupButtons.innerHTML = `<button onclick="closePopup()">Play Again</button>`;
       
-      // Reveal the final two boxes
+      // Reveal the final two boxes and ensure their tooltips stay visible
       for (let i = 0; i < container.children.length; i++) {
-          if (!container.children[i].classList.contains('opened')) {
-              openBox(container.children[i], i);
+          const card = container.children[i];
+          if (!card.classList.contains('opened-placeholder')) {
+              openBox(card, i, true); // `true` forces tooltip to be visible
+              card.classList.add('disabled'); // Disable final clicks
           }
       }
     }
